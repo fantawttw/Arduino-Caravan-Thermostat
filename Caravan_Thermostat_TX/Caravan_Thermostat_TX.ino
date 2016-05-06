@@ -48,6 +48,7 @@ int ReqTempStartPointX = TFTscreen.width() - 75;
 int ReqTempStartPointY = TFTscreen.height() - 32;
 int PreviousHour = 0;
 int PreviousMinute = 0;
+String PreviousDate = "";
 
 // Color definitions
 #define Black           0x0000      /*   0,   0,   0 */
@@ -232,7 +233,12 @@ void ReadTime()
     TFTscreen.text(TimeToDisplay.c_str(), TimeStartPointX + 35, TimeStartPointY);
 
     PreviousMinute = minute();
-
+  }
+  if (PreviousDate != CurrentDate())
+  {
+    TFTscreen.setTextSize(1);
+    TFTscreen.text(CurrentDate().c_str(), TimeStartPointX + 75, TimeStartPointY+5);
+    PreviousDate = CurrentDate();
   }
   TimeToDisplay += Time2Digit(hour());
   TimeToDisplay += ":";
@@ -245,6 +251,18 @@ void ReadTime()
 
 }
 
+String CurrentDate()
+{
+  String DateToDisplay = "";
+  DateToDisplay += dayShortStr(weekday());
+  DateToDisplay += " ";
+  DateToDisplay += Time2Digit(day());
+  DateToDisplay += "/";
+  DateToDisplay += Time2Digit(month());
+  DateToDisplay += "/";
+  DateToDisplay += Time2Digit(year()-2000);
+  return DateToDisplay;
+}
 void DrawFire(bool Flame)
 {
   //Do we need flame?

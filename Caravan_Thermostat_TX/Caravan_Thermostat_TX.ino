@@ -7,13 +7,13 @@
 */
 
 // Setup the includes
-#include <Wire.h>
+//#include <Wire.h>
 #include <SPI.h>
 #include <TFT.h>  // Arduino LCD library
 #include <dht.h> // DHT11 Library
 #include <TimeLib.h>
 #include <DS1307RTC.h> // RTC Library
-//#include <IRremote.h> // IR Library
+#include <IRremote.h> // IR Library
 
 // Define the pins.
 
@@ -31,7 +31,8 @@
 // Create instances
 TFT TFTscreen = TFT(cs, dc, rst);
 dht DHT;
-
+IRrecv irrecv(IRPIN);
+decode_results results;
 
 // Define Global Variables
 char PreviousTemperature[4];
@@ -39,7 +40,7 @@ char PreviousHumidity[4];
 char CurrentTemperature[4];
 char CurrentHumidity[4];
 bool HeatingOn = false;
-int ReqTemp = 28; // Failsafe to 0 incase of powerloss. This may well be changed.
+int ReqTemp = 17; // Failsafe incase of powerloss.
 int TempStartPointX = 5; //44 Center
 int TempStartPointY = 35;
 int TimeStartPointX = 5;
@@ -49,6 +50,8 @@ int ReqTempStartPointY = TFTscreen.height() - 32;
 int PreviousHour = 0;
 int PreviousMinute = 0;
 String PreviousDate = "";
+uint32_t IRCheckTime = 0;
+
 char *MessageOfTheDay[] =
 {
   "Love you Baby Boo x x x",
@@ -159,14 +162,50 @@ void setup() {
   Serial.begin(115200);
   setSyncProvider(RTC.get);
   SetupDisplayLayout();
-
+  irrecv.enableIRIn();
 }
 
 void loop() {
   // Read the Temperature
   ReadTemperature();
-  delay(2000);
   ReadTime();
+  CheckIR(); // This has the delay of 2000ms
+}
+
+void CheckIR()
+{
+
+  Serial.println("CheckIR");
+  IRCheckTime = millis() + 2000;
+  while (IRCheckTime > millis())
+  {
+    if (irrecv.decode(&results)) {
+    TFTscreen.setTextSize(1);
+       TFTscreen.stroke(Black);
+      String TempRequested = "";
+      TempRequested += ReqTemp;
+      TFTscreen.text(TempRequested.c_str(), ReqTempStartPointX, ReqTempStartPointY);
+      Serial.println(results.value, HEX);
+      Serial.println(results.value);
+      if (results.value == 2579) //Down
+      {
+        ReqTemp--;
+      }
+      if (results.value == 530) //Up
+      {
+        ReqTemp++;
+      }
+      irrecv.resume(); // Receive the next value
+      memset(PreviousTemperature,0,sizeof(PreviousTemperature));
+      memset(PreviousHumidity,0,sizeof(PreviousHumidity));
+      TempRequested = "";
+      TempRequested += ReqTemp;
+      TFTscreen.stroke(White);
+      TFTscreen.text(TempRequested.c_str(), ReqTempStartPointX, ReqTempStartPointY);
+    }
+  }
+
+  Serial.println("CheckIR - Done");
 }
 
 // Define Functions.
@@ -206,7 +245,7 @@ void ReadTemperature()
         if (sensorVal < ReqTemp - 1)  {
           HeatingOn = true;
         }
-        if (sensorVal > ReqTemp + 1) {
+        if (sensorVal >= ReqTemp) {
           HeatingOn = false;
         }
         DrawFire(HeatingOn);
@@ -267,7 +306,7 @@ void UpdateMOTD()
   Serial.println(day());
   Serial.println(month());
   // Need to clear the box out first.
-  TFTscreen.fillRect(0,0,TFTscreen.width(),23,Black);
+  TFTscreen.fillRect(0, 0, TFTscreen.width(), 23, Black);
   if (day() == 25 && month() == 12)
   {
     TFTscreen.text(SeasonGreetings[0], 0, 5);
@@ -278,8 +317,8 @@ void UpdateMOTD()
   }
   else if (day() == 17 && month() == 10)
   {
-    TFTscreen.text(SeasonGreetings[2],0, 5);
-    TFTscreen.text(FamilyName[0],90, 5);
+    TFTscreen.text(SeasonGreetings[2], 0, 5);
+    TFTscreen.text(FamilyName[0], 90, 5);
   }
   else
   {

@@ -7,9 +7,11 @@
 */
 
 // Setup the includes
+#include <Wire.h>
 #include <SPI.h>
 #include <TFT.h>  // Arduino LCD library
 #include <dht.h> // DHT11 Library
+#include <TimeLib.h>
 #include <DS1307RTC.h> // RTC Library
 //#include <IRremote.h> // IR Library
 
@@ -30,37 +32,121 @@
 TFT TFTscreen = TFT(cs, dc, rst);
 dht DHT;
 
+
 // Define Global Variables
 char PreviousTemperature[4];
 char PreviousHumidity[4];
 char CurrentTemperature[4];
 char CurrentHumidity[4];
 bool HeatingOn = false;
-double ReqTemp = 0; // Failsafe to 0 incase of powerloss. This may well be changed.
-int TempStartPointX = 44;
-int TempStartPointY = 40;
+int ReqTemp = 28; // Failsafe to 0 incase of powerloss. This may well be changed.
+int TempStartPointX = 5; //44 Center
+int TempStartPointY = 35;
+int TimeStartPointX = 5;
+int TimeStartPointY = TFTscreen.height() - 20;
+int ReqTempStartPointX = TFTscreen.width() - 75;
+int ReqTempStartPointY = TFTscreen.height() - 32;
+int PreviousHour = 0;
+int PreviousMinute = 0;
 
 // Color definitions
-#define BLACK    0x0000
-#define BLUE     0x001F
-#define RED      0xF800
-#define GREEN    0x07E0
-#define CYAN     0x07FF
-#define MAGENTA  0xF81F
-#define YELLOW   0xFFE0
-#define WHITE    0xFFFF
+#define Black           0x0000      /*   0,   0,   0 */
+#define Navy            0x000F      /*   0,   0, 128 */
+#define DarkGreen       0x03E0      /*   0, 128,   0 */
+#define DarkCyan        0x03EF      /*   0, 128, 128 */
+#define Maroon          0x7800      /* 128,   0,   0 */
+#define Purple          0x780F      /* 128,   0, 128 */
+#define Olive           0x7BE0      /* 128, 128,   0 */
+#define LightGrey       0xC618      /* 192, 192, 192 */
+#define DarkGrey        0x7BEF      /* 128, 128, 128 */
+#define Blue            0x001F      /*   0,   0, 255 */
+#define Green           0x07E0      /*   0, 255,   0 */
+#define Cyan            0x07FF      /*   0, 255, 255 */
+#define Red             0xF800      /* 255,   0,   0 */
+#define Magenta         0xF81F      /* 255,   0, 255 */
+#define Yellow          0xFFE0      /* 255, 255,   0 */
+#define White           0xFFFF      /* 255, 255, 255 */
+#define Orange          0xFD20      /* 255, 165,   0 */
+#define GreenYellow     0xAFE5      /* 173, 255,  47 */
+#define Pink            0xF81F
+#define Brown           0x8A22
+#define OffBlack        0x3186
+
+const unsigned char PROGMEM CampFireFlames[] =
+{
+  B00000000, B00000010, B00000000, B00000000, B00000000, //               #
+  B00000000, B00000011, B11100000, B00000000, B00000000, //               #####
+  B00000000, B00000011, B00011000, B00000000, B00000000, //               ##   ##
+  B00000000, B00000001, B00000100, B00000000, B00000000, //                #     #
+  B00000000, B00000001, B10000010, B00000000, B00000000, //                ##     #
+  B00000000, B00000000, B10000001, B00000000, B00000000, //                 #      #
+  B00000000, B00000000, B10000001, B00000000, B00000000, //                 #      #
+  B00000000, B00000000, B10000000, B10000000, B00000000, //                 #       #
+  B00000000, B00000000, B10000000, B10000000, B00000000, //                 #       #
+  B00000000, B00000000, B10000000, B10000000, B00000000, //                 #       #
+  B00000000, B00000001, B10000000, B10011000, B00000000, //                ##       #  ##
+  B00000000, B00000001, B00000001, B00011100, B00000000, //                #       #   ###
+  B00000000, B00000001, B00000001, B00001011, B00000000, //                #       #    # ##
+  B00000000, B00000010, B00000001, B00011001, B00000000, //               #        #   ##  #
+  B00000011, B10000110, B00000001, B00010000, B10000000, //       ###    ##        #   #    #
+  B00000001, B11001100, B00000001, B11110000, B10000000, //        ###  ##         #####    #
+  B00000001, B01111000, B00000000, B01000000, B01000000, //        # ####            #       #
+  B00000001, B00110000, B00000000, B00000000, B01000000, //        #  ##                     #
+  B00000001, B00000000, B00000000, B00000000, B10000000, //        #                        #
+  B00000001, B00000000, B00000000, B00000000, B10000000, //        #                        #
+  B00000011, B00000000, B00110000, B00000001, B00000000, //       ##          ##           #
+  B00000010, B00000000, B00110000, B00000001, B00000000, //       #           ##           #
+  B00000100, B00000000, B00111000, B00000001, B00000000, //      #            ###          #
+  B00001000, B00000000, B00111000, B00000001, B00000000, //     #             ###          #
+  B00011000, B00000000, B00101100, B00000000, B10000000, //    ##             # ##          #
+  B00010000, B00000000, B01001100, B00000000, B11000000, //    #             #  ##          ##
+  B00010000, B00000000, B10001000, B00000000, B01100000, //    #            #   #            ##
+  B00110000, B00000001, B10001000, B00000000, B00100000, //   ##           ##   #             #
+  B00010000, B00000011, B00011000, B10000000, B00010000, //    #          ##   ##   #          #
+  B00110000, B00000110, B00010000, B11000000, B00010000, //   ##         ##    #    ##         #
+  B00010000, B00000100, B00110000, B11000000, B00001000, //    #         #    ##    ##          #
+  B00010000, B00001100, B00110000, B11100000, B00001000, //    #        ##    ##    ###         #
+  B00010000, B00001000, B00010001, B11100000, B00001000, //    #        #      #   ####         #
+  B00001000, B00001000, B00001111, B11110000, B00001000, //     #       #       ########        #
+  B00001100, B00001000, B00000000, B01110000, B00001000, //     ##      #            ###        #
+  B00000100, B00001000, B00000000, B01110000, B00001000, //      #      #            ###        #
+  B00000010, B00001000, B00000000, B00010000, B00010000, //       #     #              #       #
+  B00000011, B00001100, B00000000, B00010000, B00010000, //       ##    ##             #       #
+  B00000001, B00000100, B00000000, B00000000, B00100000, //        #     #                    #
+  B00000000, B01000110, B00000000, B00110000, B01000000, //          #   ##           ##     #
+  B00000000, B00110011, B00000000, B00100001, B10000000, //           ##  ##          #    ##
+  B00000000, B00011111, B10000000, B01000111, B00000000, //            ######        #   ###
+  B00000000, B00000111, B11111111, B11110100, B00000000, //              ############### #
+  B00000000, B00000000, B11111111, B11100000, B00000000, //                 ###########
+};
+const unsigned char PROGMEM CampFireLogs[] =
+{
+  B00001100, B00000000, B00000000, B00000000, B00011100, //     ##                             ###
+  B00011001, B11110000, B00000000, B00000111, B11110110, //    ##  #####                 ####### ##
+  B00010000, B00011111, B10000000, B11111100, B00000011, //    #       ######       ######        ##
+  B00010000, B00000011, B11111101, B10000000, B00000010, //    #          ######## ##             #
+  B00011110, B00001111, B11110000, B00000000, B00011110, //    ####     ########               ####
+  B00001111, B11111100, B00000000, B00000011, B11011000, //     ##########                #### ##
+  B00111111, B00000000, B00000000, B11111111, B11110000, //   ######                ############
+  B01000000, B00000000, B00011111, B01000000, B00011000, //  #                 ##### #         ##
+  B11000000, B00000101, B11110110, B11000000, B00001000, // ##           # ##### ## ##          #
+  B11000001, B11111000, B00000000, B01111110, B00001000, // ##     ######            ######     #
+  B01111111, B10000000, B00000000, B00000011, B01111000, //  ########                     ## ####
+  B00000000, B00000000, B00000000, B00000000, B00100000, //                                   #
+};
 
 void setup() {
   Serial.begin(115200);
+  setSyncProvider(RTC.get);
   SetupDisplayLayout();
+
 }
 
 void loop() {
   // Read the Temperature
   ReadTemperature();
-
-  // wait for a bit.
   delay(2000);
+  ReadTime();
 }
 
 // Define Functions.
@@ -70,11 +156,21 @@ void SetupDisplayLayout() {
 
   // Draw the relevant static content.
   //oC
-  TFTscreen.stroke(WHITE);
+  TFTscreen.stroke(White);
   TFTscreen.setTextSize(1);
-  TFTscreen.text("o", 120, 25);
+  TFTscreen.text("o", TempStartPointX + 76, TempStartPointY - 8);
+  String TempRequested = "";
+  TempRequested += ReqTemp;
+  TFTscreen.text(TempRequested.c_str(), ReqTempStartPointX, ReqTempStartPointY);
+
   TFTscreen.setTextSize(2);
-  TFTscreen.text("c", 124, 29);
+  TFTscreen.text("c", TempStartPointX + 80, TempStartPointY - 4);
+  TFTscreen.text(":", TimeStartPointX + 23, TimeStartPointY);
+
+  TFTscreen.drawLine(0, TFTscreen.height() - 24, TFTscreen.width(), TFTscreen.height() - 24, OffBlack);
+  TFTscreen.drawLine(0, 24, TFTscreen.width(), 24, OffBlack);
+  TFTscreen.drawLine(TFTscreen.width() - 60, 24, TFTscreen.width() - 60, TFTscreen.height() - 24, OffBlack);
+  DrawFire(HeatingOn);
 }
 
 void ReadTemperature()
@@ -87,16 +183,93 @@ void ReadTemperature()
       //Serial.println("Temp OK");
       double sensorVal = double(DHT.temperature);
       dtostrf(sensorVal, 2, 0, CurrentTemperature);
-      //Serial.println(PreviousTemperature);
-      //Serial.println(CurrentTemperature);
-      sensorVal = double(DHT.humidity);
-      dtostrf(sensorVal, 2, 0, CurrentHumidity);
       if (memcmp(CurrentTemperature, PreviousTemperature, 4) != 0)
       {
         UpdateTemperature();
+        // Do we need to turn the heating on?
+        if (sensorVal < ReqTemp - 1)  {
+          HeatingOn = true;
+        }
+        if (sensorVal > ReqTemp + 1) {
+          HeatingOn = false;
+        }
+        DrawFire(HeatingOn);
       }
+      sensorVal = double(DHT.humidity);
+      dtostrf(sensorVal, 2, 0, CurrentHumidity);
   }
 }
+
+void ReadTime()
+{
+  String TimeToDisplay = "";
+  if (PreviousHour != hour())
+  {
+    TimeToDisplay = "";
+    TFTscreen.setTextSize(2);
+    TFTscreen.stroke(Black);
+    TimeToDisplay += Time2Digit(PreviousHour);
+    TFTscreen.text(TimeToDisplay.c_str(), TimeStartPointX, TimeStartPointY);
+
+    TimeToDisplay = "";
+    TimeToDisplay += Time2Digit(hour());
+    TFTscreen.stroke(White);
+    TFTscreen.text(TimeToDisplay.c_str(), TimeStartPointX, TimeStartPointY);
+
+    PreviousHour = hour();
+  }
+  if (PreviousMinute != minute())
+  {
+    TimeToDisplay = "";
+    TFTscreen.setTextSize(2);
+    TFTscreen.stroke(Black);
+    TimeToDisplay += Time2Digit(PreviousMinute);
+    TFTscreen.text(TimeToDisplay.c_str(), TimeStartPointX + 35, TimeStartPointY);
+
+    TimeToDisplay = "";
+    TimeToDisplay += Time2Digit(minute());
+    TFTscreen.stroke(White);
+    TFTscreen.text(TimeToDisplay.c_str(), TimeStartPointX + 35, TimeStartPointY);
+
+    PreviousMinute = minute();
+
+  }
+  TimeToDisplay += Time2Digit(hour());
+  TimeToDisplay += ":";
+  TimeToDisplay += Time2Digit(minute());
+  TimeToDisplay += ":";
+  TimeToDisplay += Time2Digit(second());
+  Serial.println("Time is " + TimeToDisplay);
+
+  // Display the time on the screen.
+
+}
+
+void DrawFire(bool Flame)
+{
+  //Do we need flame?
+  if (Flame)
+  {
+    TFTscreen.drawBitmap(TFTscreen.width() - 45, 36, CampFireFlames, 40, 44, Red);
+  }
+  else
+  {
+    TFTscreen.drawBitmap(TFTscreen.width() - 45, 36, CampFireFlames, 40, 44, Black);
+  }
+
+  TFTscreen.drawBitmap(TFTscreen.width() - 45, 80, CampFireLogs, 40, 12, Brown);
+}
+
+String Time2Digit(int Number)
+{
+  String StringToReturn = "";
+  if (Number >= 0 && Number < 10) {
+    StringToReturn += "0";
+  }
+  StringToReturn += Number;
+  return StringToReturn;
+}
+
 void UpdateTemperature()
 {
   Serial.println("Temp Diff");
@@ -126,71 +299,71 @@ void DisplayDigit(int DigitToDisplay, int Pos)
 void Display1(int Pos)
 {
   Display8(Pos);
-  DisplayTop(Pos, 0x0000);
-  DisplayTopLeft(Pos, 0x0000);
-  DisplayCenter(Pos, 0x0000);
-  DisplayBottom(Pos, 0x0000);
-  DisplayBottomLeft(Pos, 0x0000);
+  DisplayTop(Pos, Black);
+  DisplayTopLeft(Pos, Black);
+  DisplayCenter(Pos, Black);
+  DisplayBottom(Pos, Black);
+  DisplayBottomLeft(Pos, Black);
 }
 void Display2(int Pos)
 {
   Display8(Pos);
-  DisplayTopLeft(Pos, 0x0000);
-  DisplayBottomRight(Pos, 0x0000);
+  DisplayTopLeft(Pos, Black);
+  DisplayBottomRight(Pos, Black);
 }
 
 void Display3(int Pos)
 {
   Display8(Pos);
-  DisplayTopLeft(Pos, 0x0000);
-  DisplayBottomLeft(Pos, 0x0000);
+  DisplayTopLeft(Pos, Black);
+  DisplayBottomLeft(Pos, Black);
 }
 void Display4(int Pos)
 {
   Display8(Pos);
-  DisplayTop(Pos, 0x0000);
-  DisplayBottomLeft(Pos, 0x0000);
-  DisplayBottom(Pos, 0x0000);
+  DisplayTop(Pos, Black);
+  DisplayBottomLeft(Pos, Black);
+  DisplayBottom(Pos, Black);
 }
 void Display5(int Pos)
 {
   Display8(Pos);
-  DisplayTopRight(Pos, 0x0000);
-  DisplayBottomLeft(Pos, 0x0000);
+  DisplayTopRight(Pos, Black);
+  DisplayBottomLeft(Pos, Black);
 }
 void Display6(int Pos)
 {
   Display8(Pos);
-  DisplayTopRight(Pos, 0x0000);
+  DisplayTopRight(Pos, Black);
 }
 void Display7(int Pos)
 {
   Display8(Pos);
-  DisplayTopLeft(Pos, 0x0000);
-  DisplayCenter(Pos, 0x0000);
-  DisplayBottomLeft(Pos, 0x0000);
-  DisplayBottom(Pos, 0x0000);
+  DisplayTopLeft(Pos, Black);
+  DisplayCenter(Pos, Black);
+  DisplayBottomLeft(Pos, Black);
+  DisplayBottom(Pos, Black);
 }
 
 void Display8(int Pos)
 {
-  DisplayTop(Pos, 0xFFFF);
-  DisplayTopLeft(Pos, 0xFFFF);
-  DisplayTopRight(Pos, 0xFFFF);
-  DisplayCenter(Pos, 0xFFFF);
-  DisplayBottom(Pos, 0xFFFF);
-  DisplayBottomLeft(Pos, 0xFFFF);
-  DisplayBottomRight(Pos, 0xFFFF);
+  DisplayTop(Pos, White);
+  DisplayTopLeft(Pos, White);
+  DisplayTopRight(Pos, White);
+  DisplayCenter(Pos, White);
+  DisplayBottom(Pos, White);
+  DisplayBottomLeft(Pos, White);
+  DisplayBottomRight(Pos, White);
 }
 void Display9(int Pos)
 {
   Display8(Pos);
-  DisplayBottomLeft(Pos, 0x0000);
+  DisplayBottomLeft(Pos, Black);
 }
 void Display0(int Pos)
 {
   Display8(Pos);
-  DisplayCenter(Pos, 0x0000);
+  DisplayCenter(Pos, Black);
 }
 void DisplayTop(int Pos, uint16_t Color)
 {
@@ -241,4 +414,12 @@ void DisplayBottomRight(int Pos, uint16_t Color)
     TFTscreen.drawLine(TempStartPointX + Pos + 34 - i, TempStartPointY + 29 + i, TempStartPointX + Pos + 34 - i, TempStartPointY + 53 - i, Color);
   }
 }
+
+void print2digits(int number) {
+  if (number >= 0 && number < 10) {
+    Serial.write('0');
+  }
+  Serial.print(number);
+}
+
 

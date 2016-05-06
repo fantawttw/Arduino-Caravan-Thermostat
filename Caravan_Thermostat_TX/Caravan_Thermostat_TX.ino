@@ -49,6 +49,25 @@ int ReqTempStartPointY = TFTscreen.height() - 32;
 int PreviousHour = 0;
 int PreviousMinute = 0;
 String PreviousDate = "";
+char *MessageOfTheDay[] =
+{
+  "Love you Baby Boo x x x",
+
+};
+char *FamilyName[] =
+{
+  "Jon",
+  "Lisa",
+  "Zak",
+  "Max",
+  "Ty",
+};
+char *SeasonGreetings[] =
+{
+  "Merry Christmas",
+  "Happy New Year",
+  "Happy Birthday",
+};
 
 // Color definitions
 #define Black           0x0000      /*   0,   0,   0 */
@@ -154,9 +173,6 @@ void loop() {
 void SetupDisplayLayout() {
   TFTscreen.begin();
   TFTscreen.background(0, 0, 0);
-
-  // Draw the relevant static content.
-  //oC
   TFTscreen.stroke(White);
   TFTscreen.setTextSize(1);
   TFTscreen.text("o", TempStartPointX + 76, TempStartPointY - 8);
@@ -177,7 +193,6 @@ void SetupDisplayLayout() {
 void ReadTemperature()
 {
   int chk = DHT.read11(DHT11PIN);
-  //Serial.println("Read Temp");
   switch (chk)
   {
     case DHTLIB_OK:
@@ -237,20 +252,40 @@ void ReadTime()
   if (PreviousDate != CurrentDate())
   {
     TFTscreen.setTextSize(1);
-    TFTscreen.text(CurrentDate().c_str(), TimeStartPointX + 75, TimeStartPointY+5);
+    TFTscreen.text(CurrentDate().c_str(), TimeStartPointX + 75, TimeStartPointY + 5);
     PreviousDate = CurrentDate();
+    // Update Message Of The Day
+    UpdateMOTD();
   }
-  TimeToDisplay += Time2Digit(hour());
-  TimeToDisplay += ":";
-  TimeToDisplay += Time2Digit(minute());
-  TimeToDisplay += ":";
-  TimeToDisplay += Time2Digit(second());
-  Serial.println("Time is " + TimeToDisplay);
-
-  // Display the time on the screen.
-
 }
 
+void UpdateMOTD()
+{
+  // We could check for birthdays in here:)
+  TFTscreen.setTextSize(1);
+  Serial.println("MOTD");
+  Serial.println(day());
+  Serial.println(month());
+  // Need to clear the box out first.
+  TFTscreen.fillRect(0,0,TFTscreen.width(),23,Black);
+  if (day() == 25 && month() == 12)
+  {
+    TFTscreen.text(SeasonGreetings[0], 0, 5);
+  }
+  else if (day() == 1 && month() == 1)
+  {
+    TFTscreen.text(SeasonGreetings[1], 0, 5);
+  }
+  else if (day() == 17 && month() == 10)
+  {
+    TFTscreen.text(SeasonGreetings[2],0, 5);
+    TFTscreen.text(FamilyName[0],90, 5);
+  }
+  else
+  {
+    TFTscreen.text(MessageOfTheDay[0], 0, 5);
+  }
+}
 String CurrentDate()
 {
   String DateToDisplay = "";
@@ -260,7 +295,7 @@ String CurrentDate()
   DateToDisplay += "/";
   DateToDisplay += Time2Digit(month());
   DateToDisplay += "/";
-  DateToDisplay += Time2Digit(year()-2000);
+  DateToDisplay += Time2Digit(year() - 2000);
   return DateToDisplay;
 }
 void DrawFire(bool Flame)

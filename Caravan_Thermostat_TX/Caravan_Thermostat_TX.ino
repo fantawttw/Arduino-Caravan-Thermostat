@@ -7,13 +7,13 @@
 */
 
 // Setup the includes
-//#include <Wire.h>
 #include <SPI.h>
 #include <TFT.h>  // Arduino LCD library
 #include <dht.h> // DHT11 Library
 #include <TimeLib.h>
 #include <DS1307RTC.h> // RTC Library
 #include <IRremote.h> // IR Library
+#include <RF24.h>
 
 // Define the pins.
 
@@ -33,8 +33,11 @@ TFT TFTscreen = TFT(cs, dc, rst);
 dht DHT;
 IRrecv irrecv(IRPIN);
 decode_results results;
+//RF24 radio(7,8);
 
 // Define Global Variables
+bool radioNumber = 0; //Master is 0, Slave is 1
+
 char PreviousTemperature[4];
 char PreviousHumidity[4];
 char CurrentTemperature[4];
@@ -174,14 +177,12 @@ void loop() {
 
 void CheckIR()
 {
-
-  Serial.println("CheckIR");
   IRCheckTime = millis() + 2000;
   while (IRCheckTime > millis())
   {
     if (irrecv.decode(&results)) {
-    TFTscreen.setTextSize(1);
-       TFTscreen.stroke(Black);
+      TFTscreen.setTextSize(1);
+      TFTscreen.stroke(Black);
       String TempRequested = "";
       TempRequested += ReqTemp;
       TFTscreen.text(TempRequested.c_str(), ReqTempStartPointX, ReqTempStartPointY);
@@ -196,16 +197,14 @@ void CheckIR()
         ReqTemp++;
       }
       irrecv.resume(); // Receive the next value
-      memset(PreviousTemperature,0,sizeof(PreviousTemperature));
-      memset(PreviousHumidity,0,sizeof(PreviousHumidity));
+      memset(PreviousTemperature, 0, sizeof(PreviousTemperature));
+      memset(PreviousHumidity, 0, sizeof(PreviousHumidity));
       TempRequested = "";
       TempRequested += ReqTemp;
       TFTscreen.stroke(White);
       TFTscreen.text(TempRequested.c_str(), ReqTempStartPointX, ReqTempStartPointY);
     }
   }
-
-  Serial.println("CheckIR - Done");
 }
 
 // Define Functions.
@@ -235,7 +234,6 @@ void ReadTemperature()
   switch (chk)
   {
     case DHTLIB_OK:
-      //Serial.println("Temp OK");
       double sensorVal = double(DHT.temperature);
       dtostrf(sensorVal, 2, 0, CurrentTemperature);
       if (memcmp(CurrentTemperature, PreviousTemperature, 4) != 0)
@@ -302,9 +300,6 @@ void UpdateMOTD()
 {
   // We could check for birthdays in here:)
   TFTscreen.setTextSize(1);
-  Serial.println("MOTD");
-  Serial.println(day());
-  Serial.println(month());
   // Need to clear the box out first.
   TFTscreen.fillRect(0, 0, TFTscreen.width(), 23, Black);
   if (day() == 25 && month() == 12)
@@ -364,7 +359,6 @@ String Time2Digit(int Number)
 
 void UpdateTemperature()
 {
-  Serial.println("Temp Diff");
   DisplayDigit(CurrentTemperature[0], 0);
   DisplayDigit(CurrentTemperature[1], 40);
   memcpy(PreviousTemperature, CurrentTemperature, 2);
@@ -372,7 +366,6 @@ void UpdateTemperature()
 
 void DisplayDigit(int DigitToDisplay, int Pos)
 {
-  Serial.println(DigitToDisplay);
   switch (DigitToDisplay)
   {
     case 48 : Display0(Pos); break;
@@ -459,7 +452,7 @@ void Display0(int Pos)
 }
 void DisplayTop(int Pos, uint16_t Color)
 {
-  for (int i = 0; i <= 6; i++) {
+  for (uint8_t  i = 0; i <= 6; i++) {
     TFTscreen.drawLine(TempStartPointX + Pos + i, TempStartPointY + i, TempStartPointX + Pos + 33 - i, TempStartPointY + i, Color);
   }
 }
@@ -505,13 +498,6 @@ void DisplayBottomRight(int Pos, uint16_t Color)
   for (int i = 6; i >= 0; i--) {
     TFTscreen.drawLine(TempStartPointX + Pos + 34 - i, TempStartPointY + 29 + i, TempStartPointX + Pos + 34 - i, TempStartPointY + 53 - i, Color);
   }
-}
-
-void print2digits(int number) {
-  if (number >= 0 && number < 10) {
-    Serial.write('0');
-  }
-  Serial.print(number);
 }
 
 

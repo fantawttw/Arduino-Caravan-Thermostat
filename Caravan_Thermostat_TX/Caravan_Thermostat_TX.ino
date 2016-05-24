@@ -13,6 +13,7 @@
 #include <TimeLib.h>
 #include <DS1307RTC.h> // RTC Library
 #include <IRremote.h> // IR Library
+#include <SoftwareSerial.h>
 
 // Define the pins.
 
@@ -32,6 +33,7 @@ TFT TFTscreen = TFT(cs, dc, rst);
 dht DHT;
 IRrecv irrecv(IRPIN);
 decode_results results;
+SoftwareSerial BT(7, 8); // RX, TX  
 
 // Define Global Variables
 

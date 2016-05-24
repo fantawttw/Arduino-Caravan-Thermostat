@@ -25,6 +25,10 @@
 // DHT11
 #define DHT11PIN 2
 
+// BLE
+#define BLERXPIN 3
+#define BLETXPIN 4
+
 // IR Receiver
 #define IRPIN 5
 
@@ -33,7 +37,7 @@ TFT TFTscreen = TFT(cs, dc, rst);
 dht DHT;
 IRrecv irrecv(IRPIN);
 decode_results results;
-SoftwareSerial BT(7, 8); // RX, TX  
+SoftwareSerial BT(BLERXPIN, BLETXPIN); // RX, TX  
 
 // Define Global Variables
 

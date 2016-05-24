@@ -13,7 +13,6 @@
 #include <TimeLib.h>
 #include <DS1307RTC.h> // RTC Library
 #include <IRremote.h> // IR Library
-#include <RF24.h>
 
 // Define the pins.
 
@@ -33,10 +32,8 @@ TFT TFTscreen = TFT(cs, dc, rst);
 dht DHT;
 IRrecv irrecv(IRPIN);
 decode_results results;
-//RF24 radio(7,8);
 
 // Define Global Variables
-bool radioNumber = 0; //Master is 0, Slave is 1
 
 char PreviousTemperature[4];
 char PreviousHumidity[4];

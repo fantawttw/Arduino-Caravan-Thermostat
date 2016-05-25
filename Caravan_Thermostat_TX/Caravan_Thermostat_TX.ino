@@ -37,7 +37,7 @@ TFT TFTscreen = TFT(cs, dc, rst);
 dht DHT;
 IRrecv irrecv(IRPIN);
 decode_results results;
-SoftwareSerial BT(BLERXPIN, BLETXPIN); // RX, TX  
+SoftwareSerial BT(BLERXPIN, BLETXPIN); // RX, TX
 
 // Define Global Variables
 
@@ -211,6 +211,7 @@ void ReadTime()
   }
   if (PreviousDate != CurrentDate())
   {
+    TFTscreen.fillRect(TimeStartPointX + 75,  TimeStartPointY + 5, TFTscreen.width(), 23, Black);
     TFTscreen.setTextSize(1);
     TFTscreen.text(CurrentDate().c_str(), TimeStartPointX + 75, TimeStartPointY + 5);
     PreviousDate = CurrentDate();

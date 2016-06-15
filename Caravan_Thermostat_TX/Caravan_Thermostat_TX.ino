@@ -23,11 +23,11 @@
 #define rst  8
 
 // DHT11
-#define DHT11PIN 2
+#define DHT11PIN 4
 
 // BLE
-#define BLERXPIN 3
-#define BLETXPIN 4
+#define BLERXPIN 2
+#define BLETXPIN 3
 
 // IR Receiver
 #define IRPIN 5
@@ -37,7 +37,7 @@ TFT TFTscreen = TFT(cs, dc, rst);
 dht DHT;
 IRrecv irrecv(IRPIN);
 decode_results results;
-SoftwareSerial BT(BLERXPIN, BLETXPIN); // RX, TX
+SoftwareSerial BTserial(BLERXPIN, BLETXPIN); // RX, TX
 
 // Define Global Variables
 
@@ -55,8 +55,10 @@ int ReqTempStartPointX = TFTscreen.width() - 75;
 int ReqTempStartPointY = TFTscreen.height() - 32;
 int PreviousHour = 0;
 int PreviousMinute = 0;
+int BTCheckLoop = 0;
 String PreviousDate = "";
 uint32_t IRCheckTime = 0;
+uint32_t BTCheckTime = 0;
 
 char *MessageOfTheDay[] =
 {
@@ -85,19 +87,55 @@ char *SeasonGreetings[] =
 #include "CampFireGFX.h"
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   setSyncProvider(RTC.get);
   SetupDisplayLayout();
   irrecv.enableIRIn();
+  Serial.println("Enter AT commands:");
+  BTserial.begin(9600);
+  //at("AT+NAMECaravanTX");
+  //at("AT+ROLE1");
+  //at("AT+RESET");
+  delay(1000); // wait a bit, NECESSARY!!
+  at("AT+INQ");
+  // Master Address 00:15:83:00:84:F7
+  // Slave Address 00:15:83:00:83:EE
+  //at("Hello World!!");
 }
 
 void loop() {
   // Read the Temperature
   ReadTemperature();
   ReadTime();
-  CheckIR(); // This has the delay of 2000ms
+  //CheckIR(); // This has the delay of 2000ms
+  CheckBT(); // This has a delay of 2000ms
+
 }
 
+void CheckBT()
+{
+  BTCheckLoop++;
+  if (BTCheckLoop == 5)
+  {
+    Serial.println("Trying To Pair");
+    at("AT+CONN1");
+    Serial.println("Paired");
+  }
+  BTCheckTime = millis() + 2000;
+  while (BTCheckTime > millis())
+  {
+    if (BTserial.available())
+    {
+      Serial.write(BTserial.read());
+    }
+
+    // Keep reading from Arduino Serial Monitor and send to HC-06
+    if (Serial.available())
+    {
+      BTserial.write(Serial.read());
+    }
+  }
+}
 void CheckIR()
 {
   IRCheckTime = millis() + 2000;
@@ -165,9 +203,11 @@ void ReadTemperature()
         // Do we need to turn the heating on?
         if (sensorVal < ReqTemp - 1)  {
           HeatingOn = true;
+              at("*HEAT*");
         }
         if (sensorVal >= ReqTemp) {
           HeatingOn = false;
+              at("*COOL*");
         }
         DrawFire(HeatingOn);
       }
@@ -267,7 +307,6 @@ void DrawFire(bool Flame)
   {
     TFTscreen.drawBitmap(TFTscreen.width() - 45, 36, CampFireFlames, 40, 44, Black);
   }
-
   TFTscreen.drawBitmap(TFTscreen.width() - 45, 80, CampFireLogs, 40, 12, Brown);
 }
 
@@ -288,5 +327,12 @@ void UpdateTemperature()
   memcpy(PreviousTemperature, CurrentTemperature, 2);
 }
 
+void at(char* cmd) {
+  BTserial.write(cmd);
+  BTserial.write("\r\n");
+  Serial.print(cmd);
+  //while (!BTserial.find("OK") || !BTserial.find("Connected")) Serial.print(".");
 
+  Serial.println(" .. OK");
+}
 

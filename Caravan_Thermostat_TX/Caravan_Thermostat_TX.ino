@@ -107,8 +107,8 @@ void loop() {
   // Read the Temperature
   ReadTemperature();
   ReadTime();
-  //CheckIR(); // This has the delay of 2000ms
-  CheckBT(); // This has a delay of 2000ms
+  CheckIR(); // This has the delay of 2000ms
+  //CheckBT(); // This has a delay of 2000ms
 
 }
 
@@ -187,6 +187,7 @@ void SetupDisplayLayout() {
   TFTscreen.drawLine(0, 24, TFTscreen.width(), 24, OffBlack);
   TFTscreen.drawLine(TFTscreen.width() - 60, 24, TFTscreen.width() - 60, TFTscreen.height() - 24, OffBlack);
   DrawFire(HeatingOn);
+  delay(5000); // wait a bit, NECESSARY!!
 }
 
 void ReadTemperature()
